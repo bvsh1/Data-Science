@@ -1,8 +1,6 @@
-"""Script generador de app/app.html integrando los resultados de los notebooks."""
 import json
 from pathlib import Path
 
-# Cargar los datos recolectados de los notebooks
 with open("app/notebooks_data.json") as f:
     notebooks_data = json.load(f)
 
@@ -115,7 +113,6 @@ html_template = """<!DOCTYPE html>
             background-color: rgba(56, 189, 248, 0.08);
         }
 
-        /* Glassmorphism subtle */
         .glass-card {
             background: rgba(15, 23, 42, 0.75);
             backdrop-filter: blur(8px);
@@ -222,62 +219,126 @@ html_template = """<!DOCTYPE html>
                 <!-- Columna Izquierda: Panel de Control del Flujo y Telemetría Extraída (5 cols) -->
                 <div class="lg:col-span-5 space-y-6">
 
-                    <!-- Tarjeta: Inyector de Flujos y Control de Simulación -->
-                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg">
-                        <div class="flex justify-between items-center mb-3">
+                    <!-- Tarjeta: Panel de Forzado de Ataques y Simulación Estocástica -->
+                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg space-y-4">
+                        <div class="flex justify-between items-center">
                             <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
-                                <i data-lucide="sliders" class="w-4 h-4 text-cyan-400"></i> Generador & Inyector de Tráfico
+                                <i data-lucide="crosshair" class="w-4 h-4 text-red-400"></i> Control de Ataques & Generador
                             </h3>
-                            <button id="toggle-sim-btn" class="px-3 py-1 bg-cyan-600 hover:bg-cyan-500 text-white rounded-md text-xs font-medium transition flex items-center gap-1.5 shadow">
-                                <i data-lucide="play" id="play-icon" class="w-3 h-3"></i> <span id="sim-btn-label">Pausar</span>
-                            </button>
+                            <span id="forced-status-pill" class="text-[10px] px-2.5 py-0.5 rounded-full border bg-emerald-500/10 text-emerald-400 border-emerald-500/30 font-mono font-semibold flex items-center gap-1.5">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Aleatorio Activo
+                            </span>
                         </div>
 
-                        <!-- Presets de Tráfico extraídos de los Notebooks -->
-                        <div class="mb-4">
-                            <span class="block text-[11px] font-medium text-slate-400 mb-2">Inyectar Caso de Estudio Real (Notebooks 01 y 03):</span>
+                        <!-- Sección Destacada: Forzar Ataques -->
+                        <div class="bg-slate-950/80 p-3.5 rounded-xl border border-red-500/20 space-y-2.5">
+                            <div class="flex items-center justify-between">
+                                <span class="text-[11px] font-bold text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+                                    <i data-lucide="zap" class="w-3.5 h-3.5 text-amber-400"></i> Forzar Ataques Inmediatos:
+                                </span>
+                                <span class="text-[10px] text-slate-400 font-mono">Intervención Manual</span>
+                            </div>
+
                             <div class="grid grid-cols-2 gap-2">
-                                <button onclick="injectPreset('benign')" class="px-2.5 py-2 bg-slate-800 hover:bg-slate-750 border border-slate-700/80 hover:border-emerald-500/50 rounded-lg text-left transition group">
+                                <button onclick="triggerForcedAttack('DDOS_SYN')" id="btn-force-syn" class="px-3 py-2 bg-gradient-to-r from-amber-950/80 to-slate-850 hover:from-amber-900 hover:to-slate-800 border border-amber-600/50 hover:border-amber-400 rounded-lg text-left transition shadow group">
                                     <div class="flex items-center justify-between">
-                                        <span class="text-xs font-semibold text-emerald-400 group-hover:text-emerald-300">Benigno IoMT</span>
-                                        <span class="text-[9px] bg-emerald-950 text-emerald-400 px-1 rounded">TCP 6</span>
+                                        <span class="text-xs font-bold text-amber-400 group-hover:text-amber-300 flex items-center gap-1">
+                                            <i data-lucide="flame" class="w-3 h-3 text-amber-400"></i> SYN Flood
+                                        </span>
+                                        <span class="text-[9px] bg-amber-950 text-amber-300 px-1 py-0.5 rounded font-mono">54B</span>
                                     </div>
-                                    <p class="text-[10px] text-slate-400 mt-0.5">Sensor Holter/ECG, Rate ~1.65 pkts/s, Tot size ~81B</p>
+                                    <p class="text-[10px] text-slate-400 mt-0.5 leading-tight">Rate ~11.3 pkts/s, SYN=1</p>
                                 </button>
 
-                                <button onclick="injectPreset('ddos_syn')" class="px-2.5 py-2 bg-slate-800 hover:bg-slate-750 border border-slate-700/80 hover:border-amber-500/50 rounded-lg text-left transition group">
+                                <button onclick="triggerForcedAttack('DDOS_UDP')" id="btn-force-udp" class="px-3 py-2 bg-gradient-to-r from-red-950/80 to-slate-850 hover:from-red-900 hover:to-slate-800 border border-red-600/50 hover:border-red-400 rounded-lg text-left transition shadow group">
                                     <div class="flex items-center justify-between">
-                                        <span class="text-xs font-semibold text-amber-400 group-hover:text-amber-300">DDoS SYN Flood</span>
-                                        <span class="text-[9px] bg-amber-950 text-amber-400 px-1 rounded">SYN=1</span>
+                                        <span class="text-xs font-bold text-red-400 group-hover:text-red-300 flex items-center gap-1">
+                                            <i data-lucide="bomb" class="w-3 h-3 text-red-400"></i> UDP Flood
+                                        </span>
+                                        <span class="text-[9px] bg-red-950 text-red-300 px-1 py-0.5 rounded font-mono">50B</span>
                                     </div>
-                                    <p class="text-[10px] text-slate-400 mt-0.5">Inundación SYN, Rate ~11.3 pkts/s, Tot size = 54B</p>
+                                    <p class="text-[10px] text-slate-400 mt-0.5 leading-tight">Saturación >20k pkts/s</p>
+                                </button>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-2 pt-0.5">
+                                <button onclick="triggerForcedAttack('MIXED')" id="btn-force-mixed" class="px-2.5 py-1.5 bg-slate-850 hover:bg-slate-800 border border-purple-500/40 hover:border-purple-400 rounded-lg text-left transition group">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-[11px] font-bold text-purple-300 group-hover:text-purple-200 flex items-center gap-1">
+                                            <i data-lucide="shuffle" class="w-3 h-3"></i> Multivector
+                                        </span>
+                                        <span class="text-[9px] bg-purple-950 text-purple-300 px-1 rounded font-mono">SYN+UDP</span>
+                                    </div>
                                 </button>
 
-                                <button onclick="injectPreset('ddos_udp')" class="px-2.5 py-2 bg-slate-800 hover:bg-slate-750 border border-slate-700/80 hover:border-red-500/50 rounded-lg text-left transition group">
+                                <button onclick="resetToRandomStochastic()" class="px-2.5 py-1.5 bg-slate-850 hover:bg-slate-800 border border-slate-700 hover:border-cyan-500/50 rounded-lg text-left transition group">
                                     <div class="flex items-center justify-between">
-                                        <span class="text-xs font-semibold text-red-400 group-hover:text-red-300">DDoS UDP Flood</span>
-                                        <span class="text-[9px] bg-red-950 text-red-400 px-1 rounded">UDP 17</span>
+                                        <span class="text-[11px] font-semibold text-cyan-400 group-hover:text-cyan-300 flex items-center gap-1">
+                                            <i data-lucide="refresh-cw" class="w-3 h-3"></i> Restaurar
+                                        </span>
+                                        <span class="text-[9px] bg-cyan-950 text-cyan-300 px-1 rounded font-mono">Auto</span>
                                     </div>
-                                    <p class="text-[10px] text-slate-400 mt-0.5">Saturación volumétrica, Rate > 20k pkts/s, Tot size = 50B</p>
                                 </button>
+                            </div>
 
-                                <button onclick="injectPreset('enterprise')" class="px-2.5 py-2 bg-slate-800 hover:bg-slate-750 border border-slate-700/80 hover:border-purple-500/50 rounded-lg text-left transition group">
-                                    <div class="flex items-center justify-between">
-                                        <span class="text-xs font-semibold text-purple-400 group-hover:text-purple-300">Red Tradicional</span>
-                                        <span class="text-[9px] bg-purple-950 text-purple-400 px-1 rounded">CICFlowMeter</span>
-                                    </div>
-                                    <p class="text-[10px] text-slate-400 mt-0.5">CIC-DDoS2019, payload 0B sin corrección cabecera</p>
+                            <!-- Configuración del Ataque Forzado -->
+                            <div class="pt-2 border-t border-slate-800/80 flex items-center justify-between text-xs">
+                                <span class="text-[11px] text-slate-400 flex items-center gap-1">
+                                    <i data-lucide="timer" class="w-3 h-3 text-cyan-400"></i> Duración del forzado:
+                                </span>
+                                <select id="forced-duration-select" class="bg-slate-850 border border-slate-700 text-slate-200 rounded px-2 py-0.5 text-[11px] focus:outline-none">
+                                    <option value="5">5 ticks (~5 seg)</option>
+                                    <option value="10" selected>10 ticks (~10 seg)</option>
+                                    <option value="25">25 ticks (~25 seg)</option>
+                                    <option value="-1">Permanente (Bloqueo)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Presets de Tráfico Base e Inyección Puntual -->
+                        <div>
+                            <span class="block text-[11px] font-semibold text-slate-300 mb-1.5 flex items-center gap-1">
+                                <i data-lucide="layers" class="w-3 h-3 text-emerald-400"></i> Inyectar Casos Reales (NB 01 y 03):
+                            </span>
+                            <div class="grid grid-cols-2 gap-2">
+                                <button onclick="injectPreset('benign')" class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-750 border border-slate-700/80 hover:border-emerald-500/50 rounded-lg text-left transition">
+                                    <span class="text-xs font-semibold text-emerald-400 block">Benigno IoMT</span>
+                                    <span class="text-[10px] text-slate-400 block">Sensor ECG, 80.8B @ 1.65 pkts/s</span>
+                                </button>
+                                <button onclick="injectPreset('enterprise')" class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-750 border border-slate-700/80 hover:border-purple-500/50 rounded-lg text-left transition">
+                                    <span class="text-xs font-semibold text-purple-400 block">Red Tradicional</span>
+                                    <span class="text-[10px] text-slate-400 block">CICFlowMeter sin cabecera</span>
                                 </button>
                             </div>
                         </div>
 
-                        <!-- Velocidad de Muestreo -->
-                        <div class="border-t border-slate-800 pt-3">
-                            <div class="flex justify-between items-center text-xs text-slate-400 mb-1.5">
-                                <span>Cadencia de Inferencia SOC:</span>
-                                <span id="speed-label" class="font-mono text-cyan-400 font-bold">1.0s</span>
+                        <!-- Configuración de la Simulación Estocástica y Velocidad -->
+                        <div class="border-t border-slate-800 pt-3 space-y-2">
+                            <div class="flex items-center justify-between text-xs">
+                                <span class="text-slate-400 flex items-center gap-1">
+                                    <i data-lucide="sparkles" class="w-3 h-3 text-emerald-400"></i> Ataques espontáneos (Auto):
+                                </span>
+                                <select id="auto-attack-freq-select" onchange="updateSpontaneousRate()" class="bg-slate-800 border border-slate-700 text-slate-300 rounded px-2 py-0.5 text-[11px] focus:outline-none">
+                                    <option value="0.20">Baja (20% ataques aleatorios)</option>
+                                    <option value="0.45" selected>Estándar NB (45% ataques)</option>
+                                    <option value="0.75">Alta (75% ataques aleatorios)</option>
+                                    <option value="0.00">0% (Solo benigno en auto)</option>
+                                </select>
                             </div>
-                            <input id="speed-range" type="range" min="300" max="2500" step="100" value="1000" class="w-full accent-cyan-500 bg-slate-800 rounded-lg h-2 cursor-pointer">
+
+                            <div class="flex items-center justify-between gap-3 pt-1">
+                                <button id="toggle-sim-btn" class="px-3 py-1 bg-cyan-600 hover:bg-cyan-500 text-white rounded-md text-xs font-medium transition flex items-center gap-1.5 shadow">
+                                    <i data-lucide="play" id="play-icon" class="w-3 h-3"></i> <span id="sim-btn-label">Pausar</span>
+                                </button>
+
+                                <div class="flex-1">
+                                    <div class="flex justify-between items-center text-[10px] text-slate-400 mb-0.5">
+                                        <span>Cadencia:</span>
+                                        <span id="speed-label" class="font-mono text-cyan-400 font-bold">1.0s</span>
+                                    </div>
+                                    <input id="speed-range" type="range" min="300" max="2500" step="100" value="1000" class="w-full accent-cyan-500 bg-slate-800 rounded-lg h-1.5 cursor-pointer">
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -852,9 +913,14 @@ html_template = """<!DOCTYPE html>
             } catch(e) {}
         }
 
-        // Estado del generador de tráfico: 'BENIGN', 'DDOS_SYN', 'DDOS_UDP'
+        // Estado del generador de tráfico y forzado
         let currentTrafficType = 'BENIGN';
         let currentTrafficTicksLeft = 8;
+
+        // Variables de Forzado de Ataques y Aleatoriedad
+        let forcedAttackMode = 'NONE'; // 'NONE' (estocástico aleatorio), 'DDOS_SYN', 'DDOS_UDP', 'MIXED'
+        let forcedTicksRemaining = 0; // > 0 ticks restantes, -1 permanente
+        let spontaneousAttackRate = 0.45; // frecuencia de ataques espontáneos en modo automático (45%)
 
         // Elementos DOM
         const statusBadge = document.getElementById('status-badge');
@@ -868,6 +934,10 @@ html_template = """<!DOCTYPE html>
         const trafficStateBadge = document.getElementById('traffic-state-badge');
         const socLogContainer = document.getElementById('soc-log-container');
 
+        const forcedStatusPill = document.getElementById('forced-status-pill');
+        const forcedDurationSelect = document.getElementById('forced-duration-select');
+        const autoAttackFreqSelect = document.getElementById('auto-attack-freq-select');
+
         // Feature Elements
         const featTotSize = document.getElementById('feat-tot-size');
         const featSyn = document.getElementById('feat-syn');
@@ -880,6 +950,69 @@ html_template = """<!DOCTYPE html>
         const traceStep1 = document.getElementById('trace-step-1');
         const traceStep2 = document.getElementById('trace-step-2');
         const traceConclusion = document.getElementById('trace-conclusion');
+
+        // -------------------------------------------------------------
+        // CONTROL DE FORZADO DE ATAQUES & SIMULACIÓN ESTOCÁSTICA
+        // -------------------------------------------------------------
+        function triggerForcedAttack(type) {
+            const duration = forcedDurationSelect ? parseInt(forcedDurationSelect.value, 10) : 10;
+            forcedAttackMode = type;
+            forcedTicksRemaining = duration;
+
+            const names = {
+                'DDOS_SYN': 'DDoS SYN Flood (54B @ 11.3 pkts/s)',
+                'DDOS_UDP': 'DDoS UDP Flood (50B @ >20k pkts/s)',
+                'MIXED': 'Ataque Multivector (SYN + UDP Alternados)'
+            };
+            const durText = duration === -1 ? 'modo continuo permanente' : duration + ' ticks';
+            addSocLog('[CONTROL FORZADO] ¡Ataque forzado activado!: ' + (names[type] || type) + ' durante ' + durText + '.', 'alert');
+            updateForcedStateBadge();
+
+            // Si la simulación estaba en pausa, ejecutar un tick inmediato para feedback en vivo
+            if (!isSimRunning) {
+                processVector(generateTelemetryVector());
+            }
+        }
+
+        function resetToRandomStochastic() {
+            forcedAttackMode = 'NONE';
+            forcedTicksRemaining = 0;
+            currentTrafficType = 'BENIGN';
+            currentTrafficTicksLeft = Math.floor(Math.random() * 8) + 6;
+            addSocLog('[CONTROL FORZADO] Ataque forzado cancelado. Retomando aleatoriedad estocástica natural.', 'info');
+            updateForcedStateBadge();
+            if (!isSimRunning) {
+                processVector(generateTelemetryVector());
+            }
+        }
+
+        function updateSpontaneousRate() {
+            if (autoAttackFreqSelect) {
+                spontaneousAttackRate = parseFloat(autoAttackFreqSelect.value);
+                addSocLog('[SIMULADOR] Frecuencia de ataques automáticos aleatorios fijada en ' + (spontaneousAttackRate * 100).toFixed(0) + '%.', 'info');
+            }
+        }
+
+        function updateForcedStateBadge() {
+            if (!forcedStatusPill) return;
+
+            if (forcedAttackMode === 'NONE') {
+                forcedStatusPill.className = 'text-[10px] px-2.5 py-0.5 rounded-full border bg-emerald-500/10 text-emerald-400 border-emerald-500/30 font-mono font-semibold flex items-center gap-1.5';
+                forcedStatusPill.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Aleatorio Activo';
+            } else {
+                const countText = forcedTicksRemaining === -1 ? 'Continuo' : forcedTicksRemaining + ' ticks';
+                if (forcedAttackMode === 'DDOS_SYN') {
+                    forcedStatusPill.className = 'text-[10px] px-2.5 py-0.5 rounded-full border bg-amber-500/20 text-amber-300 border-amber-500/40 font-mono font-bold flex items-center gap-1.5 alert-syn';
+                    forcedStatusPill.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping"></span> Forzado: SYN (' + countText + ')';
+                } else if (forcedAttackMode === 'DDOS_UDP') {
+                    forcedStatusPill.className = 'text-[10px] px-2.5 py-0.5 rounded-full border bg-red-500/20 text-red-300 border-red-500/40 font-mono font-bold flex items-center gap-1.5 alert-udp';
+                    forcedStatusPill.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-red-400 animate-ping"></span> Forzado: UDP (' + countText + ')';
+                } else if (forcedAttackMode === 'MIXED') {
+                    forcedStatusPill.className = 'text-[10px] px-2.5 py-0.5 rounded-full border bg-purple-500/20 text-purple-300 border-purple-500/40 font-mono font-bold flex items-center gap-1.5';
+                    forcedStatusPill.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-purple-400 animate-ping"></span> Forzado: Mixto (' + countText + ')';
+                }
+            }
+        }
 
         // -------------------------------------------------------------
         // CONFIGURACIÓN DE CHART.JS (TELEMETRÍA EN VIVO)
@@ -929,22 +1062,49 @@ html_template = """<!DOCTYPE html>
         // (Calibrado con las medianas de la Sección 5 del Notebook 01)
         // -------------------------------------------------------------
         function generateTelemetryVector() {
+            // 1. PRIORIDAD: Si hay un ataque forzado activo
+            if (forcedAttackMode !== 'NONE') {
+                let typeToEmit = forcedAttackMode;
+                if (forcedAttackMode === 'MIXED') {
+                    // Alterna entre SYN y UDP en cada tick
+                    typeToEmit = (forcedTicksRemaining % 2 === 0) ? 'DDOS_SYN' : 'DDOS_UDP';
+                }
+
+                if (forcedTicksRemaining > 0) {
+                    forcedTicksRemaining--;
+                    if (forcedTicksRemaining === 0) {
+                        // Al concluir la ráfaga forzada, retornar automáticamente al modo estocástico
+                        forcedAttackMode = 'NONE';
+                        currentTrafficType = 'BENIGN';
+                        currentTrafficTicksLeft = Math.floor(Math.random() * 8) + 6;
+                        addSocLog('[CONTROL FORZADO] Ráfaga forzada completada. Retomando aleatoriedad automática.', 'info');
+                    }
+                }
+                updateForcedStateBadge();
+                return createVectorByType(typeToEmit);
+            }
+
+            // 2. MODO ESTOCÁSTICO AUTOMÁTICO (Aleatoriedad Natural)
             if (currentTrafficTicksLeft <= 0) {
                 const r = Math.random();
-                if (r < 0.55) {
+                const benignProb = Math.max(0.01, 1 - spontaneousAttackRate);
+                const synProb = spontaneousAttackRate * 0.55;
+
+                if (r < benignProb) {
                     currentTrafficType = 'BENIGN';
-                    currentTrafficTicksLeft = Math.floor(Math.random() * 8) + 6;
-                } else if (r < 0.80) {
+                    currentTrafficTicksLeft = Math.floor(Math.random() * 8) + 6; // 6 a 14 ticks de benigno
+                } else if (r < benignProb + synProb) {
                     currentTrafficType = 'DDOS_SYN';
-                    currentTrafficTicksLeft = Math.floor(Math.random() * 6) + 4;
+                    currentTrafficTicksLeft = Math.floor(Math.random() * 6) + 4; // 4 a 9 ticks de ataque SYN
                 } else {
                     currentTrafficType = 'DDOS_UDP';
-                    currentTrafficTicksLeft = Math.floor(Math.random() * 6) + 4;
+                    currentTrafficTicksLeft = Math.floor(Math.random() * 6) + 4; // 4 a 10 ticks de ataque UDP
                 }
             } else {
                 currentTrafficTicksLeft--;
             }
 
+            updateForcedStateBadge();
             return createVectorByType(currentTrafficType);
         }
 
@@ -1084,7 +1244,6 @@ html_template = """<!DOCTYPE html>
                         };
                     }
                 } else if (features.realClass === 'DDOS_SYN') {
-                    // En SYN flood el recall cayó a 68.2%
                     if (Math.random() < 0.31) {
                         return {
                             predLabel: 'Benigno (Falso Negativo por Extractores)',
@@ -1139,7 +1298,6 @@ html_template = """<!DOCTYPE html>
 
             // Escenario 5: Árbol de Decisión Base (Profundidad 4 - Notebook 03)
             if (scenario === 'decision_tree') {
-                // Árbol usa Tot size <= 67.0 y syn_flag_number
                 if (features.totSize <= 67.0) {
                     if (features.syn > 0.5) {
                         return {
@@ -1197,20 +1355,20 @@ html_template = """<!DOCTYPE html>
 
             // Actualizar Explicabilidad
             if (features.totSize <= 67.0) {
-                traceStep1.innerHTML = `1. Tamaño de paquete <span class="text-amber-400 font-bold">${features.totSize}B &le; 67.0B</span> &rarr; <span class="text-red-400">Patrón de Ataque Detectado</span> (Atajo sintético)`;
+                traceStep1.innerHTML = '1. Tamaño de paquete <span class="text-amber-400 font-bold">' + features.totSize + 'B &le; 67.0B</span> &rarr; <span class="text-red-400">Patrón de Ataque Detectado</span> (Atajo sintético)';
             } else {
-                traceStep1.innerHTML = `1. Tamaño de paquete <span class="text-emerald-400 font-bold">${features.totSize}B &gt; 67.0B</span> &rarr; Tráfico con carga útil`;
+                traceStep1.innerHTML = '1. Tamaño de paquete <span class="text-emerald-400 font-bold">' + features.totSize + 'B &gt; 67.0B</span> &rarr; Tráfico con carga útil';
             }
 
             if (features.syn > 0.5) {
-                traceStep2.innerHTML = `2. Bandera SYN activa <span class="text-amber-400 font-bold">syn_flag = 1.0</span> &rarr; Vector DDoS SYN`;
+                traceStep2.innerHTML = '2. Bandera SYN activa <span class="text-amber-400 font-bold">syn_flag = 1.0</span> &rarr; Vector DDoS SYN';
             } else if (features.proto === 17 || features.rate > 1000) {
-                traceStep2.innerHTML = `2. Protocolo UDP (17) y alta tasa <span class="text-red-400 font-bold">${features.rate} pkts/s</span> &rarr; Vector DDoS UDP`;
+                traceStep2.innerHTML = '2. Protocolo UDP (17) y alta tasa <span class="text-red-400 font-bold">' + features.rate + ' pkts/s</span> &rarr; Vector DDoS UDP';
             } else {
-                traceStep2.innerHTML = `2. Banderas regulares <span class="text-emerald-400 font-bold">ACK=1.0</span>, Varianza=${features.variance} &rarr; Sesión Benigna`;
+                traceStep2.innerHTML = '2. Banderas regulares <span class="text-emerald-400 font-bold">ACK=1.0</span>, Varianza=' + features.variance + ' &rarr; Sesión Benigna';
             }
 
-            traceConclusion.innerText = `Resultado [${scenarioSelect.options[scenarioSelect.selectedIndex].text.split(' ')[1]}]: ${pred.predLabel} (${pred.confidence}% conf.) — ${pred.ruleUsed}`;
+            traceConclusion.innerText = 'Resultado [' + scenarioSelect.options[scenarioSelect.selectedIndex].text.split(' ')[1] + ']: ' + pred.predLabel + ' (' + pred.confidence + '% conf.) — ' + pred.ruleUsed;
             traceConclusion.style.color = pred.color;
 
             // Actualizar gráfico de telemetría en vivo
@@ -1223,21 +1381,20 @@ html_template = """<!DOCTYPE html>
             // Actualizar Banner de Estado Principal
             if (pred.isAttack) {
                 const isSyn = pred.attackType === 'SYN';
-                statusBadge.className = `flex items-center space-x-2 px-4 py-1.5 rounded-full border text-xs font-semibold tracking-wide transition-all duration-300 ${isSyn ? 'border-amber-500 text-amber-400 alert-syn' : 'border-red-500 text-red-400 alert-udp'}`;
-                statusText.innerText = `¡ALERTA SOC: ${pred.predLabel.toUpperCase()}!`;
-                trafficStateBadge.innerText = `Ataque en Curso: ${pred.predLabel}`;
-                trafficStateBadge.className = `px-2.5 py-1 text-xs rounded-full font-semibold border ${isSyn ? 'bg-amber-500/10 text-amber-400 border-amber-500/30' : 'bg-red-500/10 text-red-400 border-red-500/30'}`;
+                statusBadge.className = 'flex items-center space-x-2 px-4 py-1.5 rounded-full border text-xs font-semibold tracking-wide transition-all duration-300 ' + (isSyn ? 'border-amber-500 text-amber-400 alert-syn' : 'border-red-500 text-red-400 alert-udp');
+                statusText.innerText = '¡ALERTA SOC: ' + pred.predLabel.toUpperCase() + '!';
+                trafficStateBadge.innerText = 'Ataque en Curso: ' + pred.predLabel;
+                trafficStateBadge.className = 'px-2.5 py-1 text-xs rounded-full font-semibold border ' + (isSyn ? 'bg-amber-500/10 text-amber-400 border-amber-500/30' : 'bg-red-500/10 text-red-400 border-red-500/30');
 
-                addSocLog(`[INTRUSIÓN ML] Alerta crítica: ${pred.predLabel} detectada (Tot size=${features.totSize}B, Rate=${features.rate} pkts/s, Proto=${features.proto})`, 'alert');
+                addSocLog('[INTRUSIÓN ML] Alerta crítica: ' + pred.predLabel + ' detectada (Tot size=' + features.totSize + 'B, Rate=' + features.rate + ' pkts/s, Proto=' + features.proto + ')', 'alert');
                 playAlertBeep(isSyn ? 520 : 750, 0.2);
             } else if (pred.isMisclassifiedAttack) {
-                // Alerta de omisión por fallo de generalización
                 statusBadge.className = "flex items-center space-x-2 px-4 py-1.5 rounded-full border border-red-500/80 bg-red-950/60 text-red-300 text-xs font-semibold tracking-wide animate-pulse";
-                statusText.innerText = `¡FALLO DE GENERALIZACIÓN! ATAQUE NO DETECTADO`;
-                trafficStateBadge.innerText = `Vulnerabilidad de Modelo`;
+                statusText.innerText = "¡FALLO DE GENERALIZACIÓN! ATAQUE NO DETECTADO";
+                trafficStateBadge.innerText = "Vulnerabilidad de Modelo";
                 trafficStateBadge.className = "px-2.5 py-1 text-xs rounded-full font-semibold border bg-red-500/20 text-red-400 border-red-500/40";
 
-                addSocLog(`[FALLO CRÍTICO] Ataque omitido: Flujo malicioso clasificado como Benigno debido a limitaciones del escenario (${scenario}).`, 'alert');
+                addSocLog('[FALLO CRÍTICO] Ataque omitido: Flujo malicioso clasificado como Benigno debido a limitaciones del escenario (' + scenario + ').', 'alert');
                 playAlertBeep(330, 0.35);
             } else {
                 statusBadge.className = "flex items-center space-x-2 px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold tracking-wide transition-all duration-300";
@@ -1246,7 +1403,7 @@ html_template = """<!DOCTYPE html>
                 trafficStateBadge.className = "px-2.5 py-1 text-xs rounded-full font-semibold border bg-emerald-500/10 text-emerald-400 border-emerald-500/30";
 
                 if (Math.random() < 0.25) {
-                    addSocLog(`[INFO TELEMETRÍA] Sensor IoMT normal verificado. Rate=${features.rate} pkts/s, Tot size=${features.totSize}B.`, 'info');
+                    addSocLog('[INFO TELEMETRÍA] Sensor IoMT normal verificado. Rate=' + features.rate + ' pkts/s, Tot size=' + features.totSize + 'B.', 'info');
                 }
             }
         }
@@ -1259,7 +1416,7 @@ html_template = """<!DOCTYPE html>
             } else {
                 el.className = 'text-slate-400';
             }
-            el.innerText = `[${time}] ${msg}`;
+            el.innerText = '[' + time + '] ' + msg;
             socLogContainer.appendChild(el);
             socLogContainer.scrollTop = socLogContainer.scrollHeight;
         }
@@ -1275,7 +1432,7 @@ html_template = """<!DOCTYPE html>
             else if (type === 'ddos_udp') vec = createVectorByType('DDOS_UDP');
             else if (type === 'enterprise') vec = createVectorByType('ENTERPRISE');
 
-            addSocLog(`[INYECCIÓN MANUAL] Inyectando caso de estudio: ${type.toUpperCase()}`, 'info');
+            addSocLog('[INYECCIÓN MANUAL] Inyectando caso de estudio: ' + type.toUpperCase(), 'info');
             processVector(vec);
         }
 
@@ -1327,8 +1484,8 @@ html_template = """<!DOCTYPE html>
         // -------------------------------------------------------------
         function switchTab(tabId) {
             ['monitor', 'benchmarks', 'generalizacion', 'explicabilidad', 'figuras'].forEach(t => {
-                const view = document.getElementById(`view-${t}`);
-                const btn = document.getElementById(`tab-btn-${t}`);
+                const view = document.getElementById('view-' + t);
+                const btn = document.getElementById('tab-btn-' + t);
                 if (t === tabId) {
                     view.classList.remove('hidden');
                     btn.classList.add('active');
@@ -1486,7 +1643,6 @@ html_template = """<!DOCTYPE html>
             const ctx = document.getElementById('ablationChart').getContext('2d');
 
             const variants = ['A. Original', 'B. Longitud alineada', 'C. B sin SYN/ACK', 'D. C sin tasa', 'E. C + normalización'];
-            // Valores promedio de ablacion_homologacion.csv
             const crossedData = [0.245, 0.398, 0.480, 0.450, 0.336];
             const sameDomainData = [0.997, 0.997, 0.987, 0.992, 0.864];
 
@@ -1542,7 +1698,6 @@ html_template = """<!DOCTYPE html>
             if (importanceChartInstance) return;
 
             const ctx = document.getElementById('importanceChart').getContext('2d');
-            // Datos del gráfico 04_fig03.png (Permutation Importance LightGBM)
             const topVars = [
                 { name: 'Variance', imp: 0.00060 },
                 { name: 'Rate', imp: 0.00032 },
