@@ -9,6 +9,7 @@ from sklearn.metrics import (
     average_precision_score,
     confusion_matrix,
     f1_score,
+    fbeta_score,
     precision_score,
     recall_score,
 )
@@ -112,8 +113,65 @@ def metricas_multiclase(y_true, y_pred, clases=CLASES):
     return metricas
 
 
-def evaluar(modelo, X, y, tipo="binaria", clase_real=None):
-    pred = modelo.predict(X)
+def calcular_umbral_optimo(y_true, puntaje, beta=2.0, max_fpr=0.001, paso=0.01):
+    """Encuentra el umbral de decisión en [0.01, 0.90] que maximiza F_beta
+    sujeto a no superar una tasa máxima de falsos positivos (max_fpr).
+    
+    beta=2.0 da el doble de ponderación al Recall (detección de intrusiones)
+    frente a la Precision (falsas alarmas).
+    """
+    y_true = np.asarray(y_true)
+    puntaje = np.asarray(puntaje)
+    umbrales = np.arange(0.01, 0.91, paso)
+    
+    mejor_umbral = 0.5
+    mejor_fbeta = -1.0
+    
+    benignos = (y_true == 0)
+    total_benignos = benignos.sum()
+    
+    for th in umbrales:
+        y_pred = (puntaje >= th).astype(int)
+        if total_benignos > 0:
+            fpr = (y_pred[benignos] == 1).sum() / total_benignos
+            if fpr > max_fpr:
+                continue
+        fb = fbeta_score(y_true, y_pred, beta=beta, zero_division=0)
+        if fb > mejor_fbeta:
+            mejor_fbeta = fb
+            mejor_umbral = float(th)
+            
+    return mejor_umbral, mejor_fbeta
+
+
+def predecir_con_umbral(modelo, X, umbral=0.5, tipo="binaria"):
+    """Inferencia con umbral operativo personalizado."""
+    if not hasattr(modelo, "predict_proba"):
+        return modelo.predict(X)
+        
+    proba = modelo.predict_proba(X)
+    if tipo == "binaria":
+        p_ataque = proba[:, 1] if proba.shape[1] == 2 else (1.0 - proba[:, 0])
+        return (p_ataque >= umbral).astype(int)
+    else:
+        # Multiclase: si P(Ataque) = 1 - P(Benigno) >= umbral, asignar al ataque con mayor prob
+        p_benigno = proba[:, 0]
+        es_ataque = (1.0 - p_benigno) >= umbral
+        pred = modelo.predict(X)
+        if not np.all(es_ataque == (pred != 0)):
+            # Corregir asignaciones donde P(Ataque) >= umbral pero argmax dio benigno
+            ataques_proba = proba[:, 1:]
+            mejor_ataque = np.argmax(ataques_proba, axis=1) + 1
+            pred = np.where(es_ataque, np.where(pred == 0, mejor_ataque, pred), 0)
+        return pred
+
+
+def evaluar(modelo, X, y, tipo="binaria", clase_real=None, umbral=None):
+    if umbral is not None and hasattr(modelo, "predict_proba"):
+        pred = predecir_con_umbral(modelo, X, umbral=umbral, tipo=tipo)
+    else:
+        pred = modelo.predict(X)
+        
     if tipo == "binaria":
         return metricas_binarias(y, pred, puntaje_ataque(modelo, X), clase_real)
     return metricas_multiclase(y, pred)

@@ -423,22 +423,104 @@
                             </div>
                         </div>
 
-                        <!-- Panel de Explicabilidad de la Decisión del Modelo -->
-                        <div class="border-t border-slate-800 pt-3">
-                            <span class="text-xs text-slate-400 block mb-1 font-semibold flex items-center gap-1.5">
-                                <i data-lucide="check-circle-2" class="w-3.5 h-3.5 text-cyan-400"></i> Traza de Decisión & Explicabilidad ML:
-                            </span>
-                            <div id="decision-trace-box" class="p-2.5 bg-slate-950/80 rounded-lg border border-slate-800 text-[11px] font-mono space-y-1">
-                                <div class="text-slate-400" id="trace-step-1">1. Evaluando tamaño de paquete <span class="text-cyan-300">Tot size</span>...</div>
-                                <div class="text-slate-400" id="trace-step-2">2. Verificando banderas de control <span class="text-amber-300">syn_flag_number</span>...</div>
-                                <div class="text-emerald-400 font-semibold" id="trace-conclusion">Resultado: Benigno confirmado por varianza normal y presencia de ACK.</div>
+                        <!-- Visualizador Dinámico del Árbol de Decisión (Notebook 03) -->
+                        <div class="border-t border-slate-800 pt-3.5 space-y-3">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs text-slate-200 font-bold uppercase tracking-wider flex items-center gap-1.5">
+                                    <i data-lucide="git-merge" class="w-4 h-4 text-cyan-400"></i> ¿Cómo Detecta el Árbol de Decisión?
+                                </span>
+                                <span class="text-[10px] bg-cyan-950 text-cyan-400 px-2 py-0.5 rounded font-mono border border-cyan-800">
+                                    Profundidad = 4 · 99.8% F1
+                                </span>
+                            </div>
+
+                            <p class="text-[11px] text-slate-400 leading-relaxed">
+                                El árbol entrenado en el <span class="text-slate-300 font-semibold">Notebook 03</span> utiliza una jerarquía de umbrales sobre el tamaño de trama y banderas. Los nodos a continuación se iluminan en vivo según la ruta evaluada:
+                            </p>
+
+                            <!-- Diagrama de Flujo del Árbol de Decisión Interactivo -->
+                            <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2.5 font-mono text-[11px]">
+                                
+                                <!-- Nodo Raíz: Tot size <= 67B -->
+                                <div id="tree-node-root" class="p-2.5 rounded-lg border border-cyan-500/50 bg-cyan-950/30 transition-all duration-300 shadow">
+                                    <div class="flex justify-between items-center text-xs">
+                                        <span class="font-bold text-cyan-300 flex items-center gap-1">
+                                            <i data-lucide="help-circle" class="w-3.5 h-3.5"></i> 1. División Raíz: Tot size &le; 67.0B?
+                                        </span>
+                                        <span class="text-[9px] bg-cyan-900/60 text-cyan-200 px-1.5 py-0.5 rounded font-semibold">49.6% Imp. Gini</span>
+                                    </div>
+                                    <div class="text-[10px] text-slate-400 mt-1">
+                                        Valor actual: <span id="tree-eval-size" class="font-bold text-white">80.8B</span> &rarr;
+                                        <span id="tree-eval-size-result" class="text-emerald-400 font-bold">&gt; 67.0B (Carga útil detectada)</span>
+                                    </div>
+                                </div>
+
+                                <!-- Ramas Divididas (Grid 2 columnas) -->
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    
+                                    <!-- Rama SÍ: Tot size <= 67B (Ataque potencial) -->
+                                    <div id="tree-branch-attack" class="p-2.5 rounded-lg border border-slate-800 bg-slate-900/40 transition-all duration-300 space-y-2">
+                                        <div class="text-[10px] uppercase font-bold text-amber-400 flex items-center gap-1">
+                                            <i data-lucide="corner-down-right" class="w-3 h-3"></i> Rama SÍ: Trama Corta (&le;67B)
+                                        </div>
+                                        <div class="text-[10px] text-slate-400">
+                                            Paquete sintético mínimo sin payload (patrón de inundación).
+                                        </div>
+
+                                        <!-- Subnodo: syn_flag_number > 0.5 -->
+                                        <div id="tree-node-syn-check" class="p-2 rounded bg-slate-950 border border-slate-800 transition-all">
+                                            <div class="flex justify-between items-center text-[10px]">
+                                                <span class="font-semibold text-slate-300">2. syn_flag &gt; 0.5?</span>
+                                                <span class="text-[9px] text-amber-400">48.9% Imp.</span>
+                                            </div>
+                                            <div class="text-[10px] text-slate-400 mt-0.5">
+                                                Flag SYN: <span id="tree-eval-syn" class="font-bold text-white">0.0</span>
+                                            </div>
+                                        </div>
+
+                                        <!-- Hojas de Ataque -->
+                                        <div class="grid grid-cols-2 gap-1.5 text-[10px]">
+                                            <div id="tree-leaf-syn" class="p-1.5 rounded bg-slate-950 border border-slate-800 text-slate-500 transition-all text-center">
+                                                <span class="font-bold block text-slate-400">DDoS SYN</span>
+                                                <span class="text-[9px] block">54B, SYN=1</span>
+                                            </div>
+                                            <div id="tree-leaf-udp" class="p-1.5 rounded bg-slate-950 border border-slate-800 text-slate-500 transition-all text-center">
+                                                <span class="font-bold block text-slate-400">DDoS UDP</span>
+                                                <span class="text-[9px] block">50B, Rate>10k</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Rama NO: Tot size > 67B (Tráfico Benigno) -->
+                                    <div id="tree-branch-benign" class="p-2.5 rounded-lg border border-emerald-500/60 bg-emerald-950/20 transition-all duration-300 flex flex-col justify-between">
+                                        <div>
+                                            <div class="text-[10px] uppercase font-bold text-emerald-400 flex items-center gap-1">
+                                                <i data-lucide="check" class="w-3 h-3"></i> Rama NO: Trama con Carga (&gt;67B)
+                                            </div>
+                                            <div class="text-[10px] text-slate-300 mt-1 leading-relaxed">
+                                                Tráfico IoMT legítimo (sensores médicos con telemetría variable, ACK=1, dispersión natural).
+                                            </div>
+                                        </div>
+
+                                        <div id="tree-leaf-benign" class="mt-2 p-2 rounded bg-emerald-950/60 border border-emerald-500/40 text-center">
+                                            <span class="text-xs font-bold text-emerald-300 block">Hoja: TRÁFICO BENIGNO</span>
+                                            <span class="text-[9px] text-emerald-400/80 block">Recall: 99.97% · 0 Falsas Alarmas</span>
+                                        </div>
+                                    </div>
+
+                                </div>
+
+                                <!-- Traza textual descriptiva -->
+                                <div class="pt-1.5 border-t border-slate-900 text-[10px] text-slate-400">
+                                    <span class="text-slate-300 font-semibold">Traza del Árbol:</span> <span id="tree-decision-summary" class="text-emerald-400">Tot size (80.8B) > 67.0B &rarr; Benigno confirmado.</span>
+                                </div>
                             </div>
                         </div>
                     </div>
 
                 </div>
 
-                <!-- Columna Derecha: Gráficos de Telemetría y Consola SOC (7 cols) -->
+                <!-- Columna Derecha: Gráficos de Telemetría y Consola SOC (7 cols) --><!-- Columna Derecha: Gráficos de Telemetría y Consola SOC (7 cols) -->
                 <div class="lg:col-span-7 space-y-6">
 
                     <!-- Tarjeta: Telemetría de Tráfico en Tiempo Real -->
@@ -768,6 +850,135 @@
                     </div>
                 </div>
 
+            </div>
+
+            <!-- Tarjeta Destacada: ¿Cómo detecta un ataque el Árbol de Decisión? (Notebook 03) -->
+            <div class="bg-gradient-to-br from-slate-900 via-slate-850 to-slate-900 border border-cyan-500/30 rounded-xl p-5 shadow-xl">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 mb-4">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="p-1.5 bg-cyan-500/20 text-cyan-400 rounded-lg border border-cyan-500/30">
+                                <i data-lucide="git-merge" class="w-4 h-4"></i>
+                            </span>
+                            <h3 class="text-sm font-bold text-white uppercase tracking-wider">
+                                Mecanismo de Detección del Árbol de Decisión (Notebook 03 · Sección 3)
+                            </h3>
+                        </div>
+                        <p class="text-xs text-slate-400 mt-1">
+                            Análisis formal de las reglas de partición aprendidas por el clasificador CART con profundidad máxima 4 y pesos balanceados.
+                        </p>
+                    </div>
+
+                    <span class="text-[11px] font-mono text-cyan-300 bg-cyan-950 px-2.5 py-1 rounded-full border border-cyan-800">
+                        CART (Gini Impurity)
+                    </span>
+                </div>
+
+                <!-- 3 Columnas de Explicación de los Pasos del Árbol -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 text-xs">
+                    
+                    <!-- Paso 1 -->
+                    <div class="bg-slate-950/80 p-4 rounded-xl border border-cyan-500/30 flex flex-col justify-between">
+                        <div>
+                            <div class="flex justify-between items-center mb-1.5">
+                                <span class="text-[10px] font-bold uppercase text-cyan-400 tracking-wider">1. División Primaria</span>
+                                <span class="text-[10px] font-mono bg-cyan-950 text-cyan-300 px-1.5 py-0.5 rounded font-bold">49.60% Imp.</span>
+                            </div>
+                            <h4 class="text-xs font-bold text-white mb-2">Tot size &le; 67.0 bytes</h4>
+                            <p class="text-slate-300 text-[11px] leading-relaxed">
+                                El discriminador más potente del dataset es la longitud de la trama. Las herramientas automatizadas de DDoS generan tramas sintéticas mínimas fijas:
+                            </p>
+                            <ul class="mt-2 space-y-1 text-[11px] font-mono text-slate-400">
+                                <li>• <strong class="text-amber-400">DDoS SYN:</strong> 54B exactos (14 Eth + 20 IP + 20 TCP).</li>
+                                <li>• <strong class="text-red-400">DDoS UDP:</strong> 50B exactos (14 Eth + 20 IP + 8 UDP + 8 pad).</li>
+                                <li>• <strong class="text-emerald-400">Benigno IoMT:</strong> 80.8B a 1500B (payload médico).</li>
+                            </ul>
+                        </div>
+                        <div class="mt-3 pt-2 border-t border-slate-800 text-[10px] text-emerald-400">
+                            &rarr; Si Tot size &gt; 67B, el flujo se clasifica como <strong>Benigno</strong> de inmediato (99.97% recall).
+                        </div>
+                    </div>
+
+                    <!-- Paso 2 -->
+                    <div class="bg-slate-950/80 p-4 rounded-xl border border-amber-500/30 flex flex-col justify-between">
+                        <div>
+                            <div class="flex justify-between items-center mb-1.5">
+                                <span class="text-[10px] font-bold uppercase text-amber-400 tracking-wider">2. Clasificación de Variante</span>
+                                <span class="text-[10px] font-mono bg-amber-950 text-amber-300 px-1.5 py-0.5 rounded font-bold">48.96% Imp.</span>
+                            </div>
+                            <h4 class="text-xs font-bold text-white mb-2">syn_flag_number &gt; 0.5</h4>
+                            <p class="text-slate-300 text-[11px] leading-relaxed">
+                                Entre los paquetes que cumplen la condición de trama corta (&le;67B), el árbol examina el flag TCP SYN:
+                            </p>
+                            <ul class="mt-2 space-y-1 text-[11px] font-mono text-slate-400">
+                                <li>• <strong class="text-amber-400">syn_flag == 1:</strong> Inundación SYN flood. Se clasifica como <strong>DDoS SYN</strong>.</li>
+                                <li>• <strong class="text-red-400">syn_flag == 0:</strong> El paquete no solicita conexión TCP SYN; pasa a la rama UDP.</li>
+                            </ul>
+                        </div>
+                        <div class="mt-3 pt-2 border-t border-slate-800 text-[10px] text-amber-400">
+                            &rarr; La presencia del flag SYN discrimina el 99.68% de las conexiones maliciosas SYN.
+                        </div>
+                    </div>
+
+                    <!-- Paso 3 -->
+                    <div class="bg-slate-950/80 p-4 rounded-xl border border-red-500/30 flex flex-col justify-between">
+                        <div>
+                            <div class="flex justify-between items-center mb-1.5">
+                                <span class="text-[10px] font-bold uppercase text-red-400 tracking-wider">3. Saturación UDP</span>
+                                <span class="text-[10px] font-mono bg-red-950 text-red-300 px-1.5 py-0.5 rounded font-bold">1.44% Imp.</span>
+                            </div>
+                            <h4 class="text-xs font-bold text-white mb-2">Protocol == 17 ó Rate &gt; 10k</h4>
+                            <p class="text-slate-300 text-[11px] leading-relaxed">
+                                Las divisiones restantes corroboran el tipo de protocolo (UDP = 17) y la frecuencia masiva de ráfaga:
+                            </p>
+                            <ul class="mt-2 space-y-1 text-[11px] font-mono text-slate-400">
+                                <li>• <strong class="text-red-400">Rate &gt; 20.000 pkts/s:</strong> Saturación extrema de búfer.</li>
+                                <li>• <strong class="text-purple-400">Variance == 0:</strong> Ausencia total de fluctuación humana.</li>
+                            </ul>
+                        </div>
+                        <div class="mt-3 pt-2 border-t border-slate-800 text-[10px] text-red-400">
+                            &rarr; Se etiqueta como <strong>DDoS UDP</strong> con 99.94% de precisión en la prueba oficial.
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Tabla de Importancia de Variables en el Árbol (Notebook 03) -->
+                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 text-xs">
+                    <h4 class="text-xs font-bold text-slate-200 uppercase mb-2 flex items-center gap-1.5">
+                        <i data-lucide="bar-chart-2" class="w-3.5 h-3.5 text-cyan-400"></i> Tabla de Importancia de Variables en el Árbol Multiclase (Notebook 03 · Sección 3):
+                    </h4>
+                    <div class="grid grid-cols-2 sm:grid-cols-6 gap-2 text-center font-mono text-[11px]">
+                        <div class="bg-slate-900 p-2 rounded-lg border border-cyan-500/30">
+                            <span class="text-slate-400 block text-[10px]">Tot size</span>
+                            <span class="text-cyan-400 font-bold text-sm">49.60%</span>
+                        </div>
+                        <div class="bg-slate-900 p-2 rounded-lg border border-amber-500/30">
+                            <span class="text-slate-400 block text-[10px]">syn_flag_number</span>
+                            <span class="text-amber-400 font-bold text-sm">48.96%</span>
+                        </div>
+                        <div class="bg-slate-900 p-2 rounded-lg border border-slate-700">
+                            <span class="text-slate-400 block text-[10px]">rst_flag_number</span>
+                            <span class="text-slate-300 font-bold text-sm">0.69%</span>
+                        </div>
+                        <div class="bg-slate-900 p-2 rounded-lg border border-slate-700">
+                            <span class="text-slate-400 block text-[10px]">Rate</span>
+                            <span class="text-slate-300 font-bold text-sm">0.33%</span>
+                        </div>
+                        <div class="bg-slate-900 p-2 rounded-lg border border-slate-700">
+                            <span class="text-slate-400 block text-[10px]">Variance</span>
+                            <span class="text-slate-300 font-bold text-sm">0.30%</span>
+                        </div>
+                        <div class="bg-slate-900 p-2 rounded-lg border border-slate-700">
+                            <span class="text-slate-400 block text-[10px]">Protocol Type</span>
+                            <span class="text-slate-300 font-bold text-sm">0.12%</span>
+                        </div>
+                    </div>
+
+                    <div class="mt-3 p-3 bg-slate-900/60 rounded-lg border border-slate-800 text-[11px] text-slate-400 leading-relaxed">
+                        <strong class="text-amber-400">Lección de Ciencia de Datos:</strong> El árbol depende en un <strong class="text-white">98.56%</strong> de solo 2 variables (<span class="font-mono text-cyan-300">Tot size</span> y <span class="font-mono text-amber-300">syn_flag_number</span>). Esto genera una solución ultra-rápida y precisa dentro del dominio, pero también explica el <em>sesgo de variantes del escenario V1</em>: si una variante como UDP no tiene el flag SYN y nunca fue vista, el árbol toma el atajo erróneo y la cataloga como benigna. Por ello, en el <strong>Notebook 04</strong> los ensambles de boosting (LightGBM/XGBoost) distribuyen la importancia hacia <span class="font-mono text-purple-300">Variance</span> y <span class="font-mono text-cyan-300">Rate</span>.
+                    </div>
+                </div>
             </div>
 
             <!-- Tabla de Estabilidad Temporal / Concept Drift dentro de IoMT (KS y PSI) -->
@@ -1345,23 +1556,59 @@
             featVar.innerText = features.variance.toFixed(3);
             featAck.innerText = features.ack.toFixed(1);
 
-            // Actualizar Explicabilidad
+            // Actualizar Visualizador Dinámico del Árbol de Decisión
+            const treeEvalSize = document.getElementById('tree-eval-size');
+            const treeEvalSizeResult = document.getElementById('tree-eval-size-result');
+            const treeEvalSyn = document.getElementById('tree-eval-syn');
+            const treeBranchAttack = document.getElementById('tree-branch-attack');
+            const treeBranchBenign = document.getElementById('tree-branch-benign');
+            const treeLeafSyn = document.getElementById('tree-leaf-syn');
+            const treeLeafUdp = document.getElementById('tree-leaf-udp');
+            const treeLeafBenign = document.getElementById('tree-leaf-benign');
+            const treeDecisionSummary = document.getElementById('tree-decision-summary');
+
+            if (treeEvalSize) treeEvalSize.innerText = features.totSize.toFixed(1) + 'B';
+            if (treeEvalSyn) treeEvalSyn.innerText = features.syn.toFixed(1);
+
             if (features.totSize <= 67.0) {
-                traceStep1.innerHTML = '1. Tamaño de paquete <span class="text-amber-400 font-bold">' + features.totSize + 'B &le; 67.0B</span> &rarr; <span class="text-red-400">Patrón de Ataque Detectado</span> (Atajo sintético)';
-            } else {
-                traceStep1.innerHTML = '1. Tamaño de paquete <span class="text-emerald-400 font-bold">' + features.totSize + 'B &gt; 67.0B</span> &rarr; Tráfico con carga útil';
-            }
+                // Rama de Ataque (&le; 67B)
+                if (treeEvalSizeResult) {
+                    treeEvalSizeResult.innerHTML = '&le; 67.0B (Trama corta sintética detectada)';
+                    treeEvalSizeResult.className = 'text-amber-400 font-bold';
+                }
+                if (treeBranchAttack) treeBranchAttack.className = 'p-2.5 rounded-lg border border-amber-500/80 bg-amber-950/30 transition-all duration-300 space-y-2 shadow';
+                if (treeBranchBenign) treeBranchBenign.className = 'p-2.5 rounded-lg border border-slate-800 bg-slate-900/40 opacity-40 transition-all duration-300 flex flex-col justify-between';
 
-            if (features.syn > 0.5) {
-                traceStep2.innerHTML = '2. Bandera SYN activa <span class="text-amber-400 font-bold">syn_flag = 1.0</span> &rarr; Vector DDoS SYN';
-            } else if (features.proto === 17 || features.rate > 1000) {
-                traceStep2.innerHTML = '2. Protocolo UDP (17) y alta tasa <span class="text-red-400 font-bold">' + features.rate + ' pkts/s</span> &rarr; Vector DDoS UDP';
+                if (features.syn > 0.5) {
+                    // SYN Flood
+                    if (treeLeafSyn) treeLeafSyn.className = 'p-1.5 rounded bg-amber-500/20 border border-amber-500 text-amber-300 font-bold transition-all text-center alert-syn shadow';
+                    if (treeLeafUdp) treeLeafUdp.className = 'p-1.5 rounded bg-slate-950 border border-slate-800 text-slate-600 transition-all text-center';
+                    if (treeDecisionSummary) {
+                        treeDecisionSummary.innerHTML = 'Tot size (' + features.totSize + 'B &le; 67B) AND syn_flag (' + features.syn + ' > 0.5) &rarr; <span class="text-amber-400 font-bold">DDoS SYN Flood</span> detectado.';
+                    }
+                } else {
+                    // UDP Flood
+                    if (treeLeafUdp) treeLeafUdp.className = 'p-1.5 rounded bg-red-500/20 border border-red-500 text-red-300 font-bold transition-all text-center alert-udp shadow';
+                    if (treeLeafSyn) treeLeafSyn.className = 'p-1.5 rounded bg-slate-950 border border-slate-800 text-slate-600 transition-all text-center';
+                    if (treeDecisionSummary) {
+                        treeDecisionSummary.innerHTML = 'Tot size (' + features.totSize + 'B &le; 67B) AND syn_flag &le; 0.5 AND UDP (17) &rarr; <span class="text-red-400 font-bold">DDoS UDP Flood</span> detectado.';
+                    }
+                }
             } else {
-                traceStep2.innerHTML = '2. Banderas regulares <span class="text-emerald-400 font-bold">ACK=1.0</span>, Varianza=' + features.variance + ' &rarr; Sesión Benigna';
-            }
+                // Rama Benigna (> 67B)
+                if (treeEvalSizeResult) {
+                    treeEvalSizeResult.innerHTML = '&gt; 67.0B (Carga útil legítima detectada)';
+                    treeEvalSizeResult.className = 'text-emerald-400 font-bold';
+                }
+                if (treeBranchBenign) treeBranchBenign.className = 'p-2.5 rounded-lg border border-emerald-500 bg-emerald-950/40 transition-all duration-300 flex flex-col justify-between shadow';
+                if (treeBranchAttack) treeBranchAttack.className = 'p-2.5 rounded-lg border border-slate-800 bg-slate-900/40 opacity-40 transition-all duration-300 space-y-2';
 
-            traceConclusion.innerText = 'Resultado [' + scenarioSelect.options[scenarioSelect.selectedIndex].text.split(' ')[1] + ']: ' + pred.predLabel + ' (' + pred.confidence + '% conf.) — ' + pred.ruleUsed;
-            traceConclusion.style.color = pred.color;
+                if (treeLeafSyn) treeLeafSyn.className = 'p-1.5 rounded bg-slate-950 border border-slate-800 text-slate-600 transition-all text-center';
+                if (treeLeafUdp) treeLeafUdp.className = 'p-1.5 rounded bg-slate-950 border border-slate-800 text-slate-600 transition-all text-center';
+                if (treeDecisionSummary) {
+                    treeDecisionSummary.innerHTML = 'Tot size (' + features.totSize + 'B > 67.0B) &rarr; <span class="text-emerald-400 font-bold">Tráfico Benigno</span> (descarta ataque).';
+                }
+            }
 
             // Actualizar gráfico de telemetría en vivo
             liveChart.data.datasets[0].data.push(features.rate);
