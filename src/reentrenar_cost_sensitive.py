@@ -233,13 +233,15 @@ def main():
 
     # 1. Comparación binaria oficial
     ruta_bin = CARPETA_RESULTADOS / "comparacion_binaria_prueba_oficial.csv"
-    # Añadir clase mayoritaria para referencia si existía
+    n_ataques_test = int((test["etiqueta"] == 1).sum())
+    n_benignos_test = int((test["etiqueta"] == 0).sum())
+    prec_may = n_ataques_test / len(test)
     fila_mayoritaria = {
         "Modelo": "Clase mayoritaria",
-        "Accuracy": 0.909524, "Precision DDoS": 0.909524, "Recall DDoS": 1.0,
-        "F1 DDoS": 0.952619, "F1 macro": 0.476309, "Tasa falsos positivos": 1.0,
-        "PR-AUC": 0.909524, "Recall SYN": 1.0, "Recall UDP": 1.0,
-        "Falsas alarmas": 37607, "Ataques no detectados": 0, "Umbral óptimo": 0.5
+        "Accuracy": prec_may, "Precision DDoS": prec_may, "Recall DDoS": 1.0,
+        "F1 DDoS": 2 * prec_may / (1 + prec_may), "F1 macro": prec_may / 2, "Tasa falsos positivos": 1.0,
+        "PR-AUC": prec_may, "Recall SYN": 1.0, "Recall UDP": 1.0,
+        "Falsas alarmas": n_benignos_test, "Ataques no detectados": 0, "Umbral óptimo": 0.5
     }
     df_bin_final = pd.concat([pd.DataFrame([fila_mayoritaria]), df_bin_nuevo], ignore_index=True)
     df_bin_final.to_csv(ruta_bin, index=False)
@@ -247,12 +249,16 @@ def main():
 
     # 2. Comparación multiclase oficial
     ruta_mul = CARPETA_RESULTADOS / "comparacion_multiclase_prueba_oficial.csv"
+    clase_may = test["clase"].value_counts().idxmax()
+    acc_may = (test["clase"] == clase_may).mean()
     fila_mayoritaria_mul = {
         "Modelo": "Clase mayoritaria",
-        "Accuracy": 0.494767, "Precision macro": 0.164922, "Recall macro": 0.333333,
-        "F1 macro": 0.220666, "Recall Benigno": 0.0, "Recall DDoS SYN": 0.0,
-        "Recall DDoS UDP": 1.0, "Tasa falsos positivos": 1.0,
-        "Ataques no detectados": 172397, "Falsas alarmas": 37607
+        "Accuracy": acc_may, "Precision macro": acc_may / 3, "Recall macro": 1 / 3,
+        "F1 macro": (2 * acc_may / (1 + acc_may)) / 3, "Recall Benigno": 0.0,
+        "Recall DDoS SYN": 1.0 if clase_may == 1 else 0.0,
+        "Recall DDoS UDP": 1.0 if clase_may == 2 else 0.0, "Tasa falsos positivos": 1.0,
+        "Ataques no detectados": int(((test["clase"] != 0) & (clase_may == 0)).sum()),
+        "Falsas alarmas": n_benignos_test if clase_may != 0 else 0
     }
     df_mul_final = pd.concat([pd.DataFrame([fila_mayoritaria_mul]), df_mul_nuevo], ignore_index=True)
     df_mul_final.to_csv(ruta_mul, index=False)

@@ -61,5 +61,9 @@
   },
   "costo_sensible": true,
   "factor_penalizacion_ataque": 4.0,
-  "semilla": 42
+  "semilla": 42,
+  "particion": "estratificada_80_20",
+  "tamano_train": 689486,
+  "tamano_val": 121674,
+  "tamano_test": 202790
 }
