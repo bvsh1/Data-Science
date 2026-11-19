@@ -1,2 +1,8 @@
 GeneratedLabelledFlows.zip
 TrafficLabelling
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.DS_Store
+# Datos originales (cientos de MB, se descargan con DESCARGA_DATOS.txt)
+data/raw/

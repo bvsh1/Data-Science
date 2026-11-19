@@ -87,7 +87,10 @@ def metricas_multiclase(y_true, y_pred, clases=CLASES):
     clasificado como alguna variante de DDoS.
     """
     y_true, y_pred = np.asarray(y_true), np.asarray(y_pred)
-    etiquetas = list(clases)
+    # Solo las clases que aparecen en los datos o en las predicciones: así la
+    # comparación entre dominios (sin MQTT ni ICMP) no promedia clases ausentes.
+    presentes = set(np.unique(y_true)) | set(np.unique(y_pred))
+    etiquetas = [c for c in clases if c in presentes]
     benignos = y_true == 0
 
     metricas = {
@@ -105,8 +108,10 @@ def metricas_multiclase(y_true, y_pred, clases=CLASES):
     recalls = recall_score(
         y_true, y_pred, labels=etiquetas, average=None, zero_division=0
     )
+    reales = set(np.unique(y_true))
     for clase, valor in zip(etiquetas, recalls):
-        metricas[f"Recall {clases[clase]}"] = valor
+        if clase in reales:
+            metricas[f"Recall {clases[clase]}"] = valor
     metricas["Tasa falsos positivos"] = (
         (y_pred[benignos] != 0).mean() if benignos.any() else np.nan
     )
@@ -183,7 +188,10 @@ def matriz_confusion(y_true, y_pred, tipo="binaria", titulo="", ax=None,
     if tipo == "binaria":
         etiquetas, nombres = [0, 1], ["Benigno", "DDoS"]
     else:
-        etiquetas, nombres = list(CLASES), list(CLASES.values())
+        # Solo las clases presentes (la evaluación cruzada no tiene MQTT ni ICMP)
+        presentes = set(np.unique(y_true)) | set(np.unique(y_pred))
+        etiquetas = [c for c in CLASES if c in presentes]
+        nombres = [CLASES[c] for c in etiquetas]
 
     ConfusionMatrixDisplay.from_predictions(
         y_true, y_pred,

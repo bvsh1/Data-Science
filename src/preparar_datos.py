@@ -2,6 +2,7 @@
 wifi_mqtt_clean.parquet si los CSV individuales no están descomprimidos.
 """
 
+import os
 from pathlib import Path
 import json
 import numpy as np
@@ -16,7 +17,13 @@ SEMILLA = 42
 EXCLUIR_SOSPECHOSAS = True
 UMBRAL_CORRELACION = 0.98
 
-PARQUET_RAW = Path("/home/bvsh1/datasets/CICIoMT2024/Core_Processed_Data/wifi_mqtt_clean.parquet")
+# Ruta al parquet consolidado de CICIoMT2024. Se define con la variable de
+# entorno NIDS_PARQUET_RAW; por defecto se busca en data/raw/CICIoMT2024/.
+# Si no existe, ejecutar los notebooks 01 y 02, que leen los CSV individuales.
+PARQUET_RAW = Path(os.environ.get(
+    "NIDS_PARQUET_RAW",
+    CARPETA_PROCESADOS.parent / "raw" / "CICIoMT2024" / "wifi_mqtt_clean.parquet",
+))
 
 COLS_MAP = {
     "header_length": "Header_Length",
@@ -83,6 +90,12 @@ def main():
         print("Los datos procesados ya existen en:", CARPETA_PROCESADOS)
         return
 
+    if not PARQUET_RAW.exists():
+        raise SystemExit(
+            f"No existe {PARQUET_RAW}.\n"
+            "Define NIDS_PARQUET_RAW con la ruta al parquet, o ejecuta los notebooks 01 y 02, "
+            "que generan data/processed/ desde los CSV de DESCARGA_DATOS.txt."
+        )
     print("Cargando wifi_mqtt_clean.parquet...")
     df = pd.read_parquet(PARQUET_RAW)
 

@@ -7,6 +7,17 @@ Combina los flujos limpios de CICIoMT2024 (1,013,950 registros) y genera:
 - 20% Prueba oficial (Test: 202,790 flujos)
 """
 
+# ---------------------------------------------------------------------------
+# AVISO (Etapa III): este experimento NO se usa en los resultados finales.
+# Mezcla la prueba oficial (captura separada y sin deduplicar) con el
+# entrenamiento y la vuelve a partir al azar, por lo que la prueba deja de ser
+# independiente y puede haber filas idénticas en ambos lados. Además
+# sobrescribe data/processed/ y tablas de deliverables/resultados/.
+# Se conserva como iteración descartada; para ejecutarlo hay que pedirlo
+# explícitamente con --confirmar.
+# ---------------------------------------------------------------------------
+
+
 import sys
 from pathlib import Path
 RAIZ = Path(__file__).resolve().parents[1]
@@ -100,4 +111,10 @@ def regenerar_particiones_80_20():
     print("Partición 80/20 completada exitosamente.")
 
 if __name__ == "__main__":
+    if "--confirmar" not in sys.argv:
+        sys.exit(
+            "Experimento descartado: sobrescribe data/processed/ y deliverables/resultados/.\n"
+            "Si de verdad quieres ejecutarlo: python src/aplicar_split_80_20.py --confirmar\n"
+            "Para volver a la partición original, ejecuta los notebooks 01 y 02."
+        )
     regenerar_particiones_80_20()

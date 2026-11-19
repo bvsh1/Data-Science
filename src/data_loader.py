@@ -1,7 +1,13 @@
 """Ingesta y limpieza de los flujos de red utilizados en el proyecto.
 
-Dominio IoMT: CICIoMT2024 (benigno, DDoS SYN y DDoS UDP).
+Dominio IoMT: CICIoMT2024 (benigno, DDoS SYN, DDoS UDP y, desde la Etapa III,
+DDoS MQTT Publish Flood y DDoS ICMP).
 Dominio tradicional (opcional, etapa III): CIC-DDoS2019 y CSE-CIC-IDS2018.
+
+Los ataques MQTT e ICMP no existen en CIC-DDoS2019, así que la comparación
+entre dominios usa solo las clases de CLASES_COMPARTIDAS. Para reproducir los
+resultados de la Presentación 2 (solo benigno, SYN y UDP), definir la
+variable de entorno NIDS_ATAQUES_NUEVOS=0 antes de abrir los notebooks.
 """
 
 import json
@@ -20,22 +26,46 @@ CARPETA_PROCESADOS = CARPETA_DATOS / "processed"
 CARPETA_RESULTADOS = RAIZ_PROYECTO / "deliverables" / "resultados"
 CARPETA_MODELOS = RAIZ_PROYECTO / "models"
 
-# 0 = benigno; las clases 1 y 2 son variantes de DDoS
+# Con NIDS_ATAQUES_NUEVOS=0 se vuelve a las tres clases de la Presentación 2.
+INCLUIR_ATAQUES_NUEVOS = os.environ.get("NIDS_ATAQUES_NUEVOS", "1").strip() != "0"
+
+# 0 = benigno; las demás clases son variantes de DDoS
 CLASES = {0: "Benigno", 1: "DDoS SYN", 2: "DDoS UDP"}
+if INCLUIR_ATAQUES_NUEVOS:
+    CLASES.update({3: "DDoS MQTT", 4: "DDoS ICMP"})
+
+# Clases que existen en ambos dominios (CICIoMT2024 y CIC-DDoS2019)
+CLASES_COMPARTIDAS = (0, 1, 2)
 COLUMNAS_OBJETIVO = ["clase", "etiqueta"]
 
-ARCHIVOS = {
+# Patrones de nombre (glob) dentro de data/raw/CICIoMT2024/<partición>/.
+# Las clases 0 a 2 usan un archivo exacto, como en la Presentación 2; los
+# ataques nuevos aceptan todas sus partes (por ejemplo ICMP1, ICMP2, ...).
+_ARCHIVOS_TODOS = {
     "train": {
         0: "Benign_train.pcap.csv",
         1: "TCP_IP-DDoS-SYN1_train.pcap.csv",
         2: "TCP_IP-DDoS-UDP1_train.pcap.csv",
+        3: "MQTT-DDoS-Publish_Flood*train*.csv",
+        4: "TCP_IP-DDoS-ICMP*train*.csv",
     },
     "test": {
         0: "Benign_test.pcap.csv",
         1: "TCP_IP-DDoS-SYN_test.pcap.csv",
         2: "TCP_IP-DDoS-UDP1_test.pcap.csv",
+        3: "MQTT-DDoS-Publish_Flood*test*.csv",
+        4: "TCP_IP-DDoS-ICMP*test*.csv",
     },
 }
+ARCHIVOS = {
+    particion: {c: patron for c, patron in archivos.items() if c in CLASES}
+    for particion, archivos in _ARCHIVOS_TODOS.items()
+}
+
+# Tope de flujos por clase para los ataques nuevos (muestra aleatoria), para
+# que queden en la misma escala que SYN y UDP (~200.000 flujos cada uno).
+TOPE_FLUJOS_ATAQUES_NUEVOS = 200_000
+SEMILLA_MUESTRA = 42
 
 ARCHIVO_IDS2018 = "Wednesday-21-02-2018_TrafficForML_CICFlowMeter.csv"
 
@@ -64,8 +94,9 @@ NOMBRES_CICFLOWMETER = {
 }
 
 
-def ruta_archivo(particion, clase):
-    return CARPETA_RAW / particion / ARCHIVOS[particion][clase]
+def rutas_archivo(particion, clase):
+    """Archivos de una clase y partición (puede haber varias partes)."""
+    return sorted((CARPETA_RAW / particion).glob(ARCHIVOS[particion][clase]))
 
 
 def verificar_archivos():
@@ -74,20 +105,28 @@ def verificar_archivos():
         {
             "Partición": particion,
             "Clase": CLASES[clase],
-            "Archivo": archivo,
-            "Disponible": ruta_archivo(particion, clase).exists(),
+            "Archivo": patron,
+            "Partes encontradas": len(rutas_archivo(particion, clase)),
         }
         for particion, archivos in ARCHIVOS.items()
-        for clase, archivo in archivos.items()
+        for clase, patron in archivos.items()
     ]
     estado = pd.DataFrame(filas)
+    estado["Disponible"] = estado["Partes encontradas"] > 0
 
     if not estado["Disponible"].all():
         faltantes = estado.loc[~estado["Disponible"], "Archivo"].tolist()
-        raise FileNotFoundError(
+        mensaje = (
             f"Faltan archivos en {CARPETA_RAW}: {faltantes}. "
             "Revisar DESCARGA_DATOS.txt."
         )
+        if INCLUIR_ATAQUES_NUEVOS:
+            mensaje += (
+                " Si aún no se descargan los ataques MQTT e ICMP, se puede "
+                "trabajar con las tres clases originales definiendo "
+                "NIDS_ATAQUES_NUEVOS=0."
+            )
+        raise FileNotFoundError(mensaje)
     return estado
 
 
@@ -95,18 +134,41 @@ def cargar_particion(particion, clases=None, nrows=None):
     """Lee los CSV de una partición ("train" o "test") y agrega las etiquetas.
 
     `clase` es la etiqueta multiclase y `etiqueta` la binaria (1 = DDoS).
+    Los ataques nuevos (clases 3 y 4) se leen de todas sus partes y se
+    reducen a una muestra aleatoria de TOPE_FLUJOS_ATAQUES_NUEVOS flujos.
     """
     partes = []
-    for clase, archivo in ARCHIVOS[particion].items():
+    for clase in ARCHIVOS[particion]:
         if clases is not None and clase not in clases:
             continue
-        df = pd.read_csv(ruta_archivo(particion, clase), nrows=nrows)
-        df.columns = df.columns.str.strip()
-        partes.append(df.assign(clase=clase))
+        rutas = rutas_archivo(particion, clase)
+        if not rutas:
+            raise FileNotFoundError(
+                f"No hay archivos «{ARCHIVOS[particion][clase]}» en "
+                f"{CARPETA_RAW / particion}. Revisar DESCARGA_DATOS.txt."
+            )
+
+        trozos = []
+        for ruta in rutas:
+            df = pd.read_csv(ruta, nrows=nrows)
+            df.columns = df.columns.str.strip()
+            if clase not in CLASES_COMPARTIDAS and len(df) > TOPE_FLUJOS_ATAQUES_NUEVOS:
+                # Muestra por archivo para acotar la memoria
+                df = df.sample(TOPE_FLUJOS_ATAQUES_NUEVOS, random_state=SEMILLA_MUESTRA)
+            trozos.append(df)
+        df = pd.concat(trozos, ignore_index=True)
+        if clase not in CLASES_COMPARTIDAS and len(df) > TOPE_FLUJOS_ATAQUES_NUEVOS:
+            df = df.sample(TOPE_FLUJOS_ATAQUES_NUEVOS, random_state=SEMILLA_MUESTRA)
+        partes.append(df.reset_index(drop=True).assign(clase=clase))
 
     datos = pd.concat(partes, ignore_index=True)
     datos["etiqueta"] = (datos["clase"] > 0).astype(int)
     return datos
+
+
+def solo_clases_compartidas(datos):
+    """Filtra las clases que existen en ambos dominios (para la comparación cruzada)."""
+    return datos[datos["clase"].isin(CLASES_COMPARTIDAS)].reset_index(drop=True)
 
 
 def columnas_caracteristicas(datos):

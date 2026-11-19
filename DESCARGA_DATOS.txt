@@ -48,6 +48,8 @@ Ejecutar todas las celdas de los notebooks en este orden:
 2) notebooks/02_preprocessing_fe.ipynb
 3) notebooks/03_baseline_models.ipynb
 4) notebooks/04_final_models_eval.ipynb
+5) notebooks/05_neural_network_mlp.ipynb
+6) notebooks/06_revision_y_ataque_no_visto.ipynb
 
 Los notebooks 01 y 02 generan los archivos de data/processed/.
 No es necesario descargar esos archivos procesados por separado.
@@ -85,6 +87,31 @@ Otro archivo opcional, no requerido por el código actual:
 TCP_IP-DDoS-UDP2_test.pcap.csv
 Guardar, si se descarga, en: data/raw/CICIoMT2024/test/
 Descarga: https://cicresearch.ca/IOTDataset/CICIoMT2024/download.php?file=WiFI_and_MQTT%2Fattacks%2FCSV%2Ftest%2FTCP_IP-DDoS-UDP2_test.pcap.csv
+
+6. ATAQUES MQTT E ICMP (ETAPA III)
+
+Desde la Etapa III todos los notebooks usan además dos ataques DDoS de
+CICIoMT2024 (clases 3 y 4). Descargarlos de la misma carpeta del dataset
+(WiFI_and_MQTT/attacks/CSV/train y WiFI_and_MQTT/attacks/CSV/test) sin
+cambiar sus nombres:
+
+- DDoS MQTT Publish Flood: archivos que empiezan con "MQTT-DDoS-Publish_Flood"
+  (por ejemplo MQTT-DDoS-Publish_Flood_train.pcap.csv y
+  MQTT-DDoS-Publish_Flood_test.pcap.csv).
+- DDoS ICMP flood: archivos que empiezan con "TCP_IP-DDoS-ICMP"
+  (vienen divididos en partes, por ejemplo TCP_IP-DDoS-ICMP1_train.pcap.csv,
+  TCP_IP-DDoS-ICMP2_train.pcap.csv, ... y TCP_IP-DDoS-ICMP1_test.pcap.csv).
+
+Guardar los de entrenamiento en data/raw/CICIoMT2024/train/ y los de prueba
+en data/raw/CICIoMT2024/test/. Los enlaces siguen el mismo formato que los de
+arriba, por ejemplo:
+https://cicresearch.ca/IOTDataset/CICIoMT2024/download.php?file=WiFI_and_MQTT%2Fattacks%2FCSV%2Ftrain%2FMQTT-DDoS-Publish_Flood_train.pcap.csv
+
+Confirmar los nombres exactos en el listado de archivos del dataset. El
+código busca los archivos por patrón (src/data_loader.py, ARCHIVOS), así que
+acepta todas las partes, y toma una muestra de hasta 200.000 flujos por ataque.
+Si todavía no se descargan, definir NIDS_ATAQUES_NUEVOS=0 para trabajar con las
+tres clases originales (benigno, SYN y UDP).
 
 Fuente: Canadian Institute for Cybersecurity, University of New Brunswick.
 Consultar la página oficial para los requisitos de uso y citación del dataset.

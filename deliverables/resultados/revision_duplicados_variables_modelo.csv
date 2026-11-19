@@ -1,0 +1,4 @@
+Conjunto,Filas,Repetidas,% repetidas,% repetidas Benigno,% repetidas DDoS SYN,% repetidas DDoS UDP,% repetidas DDoS MQTT,% repetidas DDoS ICMP
+Entrenamiento (repetidas dentro del mismo conjunto),660724,160352,24.269135070014105,0.0,27.666257084106526,0.0,0.0,72.6417570878544
+Validación (iguales a una fila de entrenamiento),165181,44360,26.855388936984276,0.0,30.984502733336676,0.0,0.0,80.014000700035
+Prueba oficial (iguales a una fila de entrenamiento),624074,74363,11.915734352015948,0.0,8.072646275747259,0.0,0.0,30.223

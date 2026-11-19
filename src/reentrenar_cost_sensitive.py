@@ -2,6 +2,17 @@
 y calibración de umbrales operativos (Threshold Tuning) para minimizar los ataques no detectados.
 """
 
+# ---------------------------------------------------------------------------
+# AVISO (Etapa III): este experimento NO se usa en los resultados finales.
+# Mezcla la prueba oficial (captura separada y sin deduplicar) con el
+# entrenamiento y la vuelve a partir al azar, por lo que la prueba deja de ser
+# independiente y puede haber filas idénticas en ambos lados. Además
+# sobrescribe data/processed/ y tablas de deliverables/resultados/.
+# Se conserva como iteración descartada; para ejecutarlo hay que pedirlo
+# explícitamente con --confirmar.
+# ---------------------------------------------------------------------------
+
+
 import sys
 from pathlib import Path
 RAIZ = Path(__file__).resolve().parents[1]
@@ -306,4 +317,10 @@ def main():
     print(df_mul_final[["Modelo", "F1 macro", "Recall Benigno", "Recall DDoS SYN", "Recall DDoS UDP", "Ataques no detectados", "Falsas alarmas"]].to_string(index=False))
 
 if __name__ == "__main__":
+    if "--confirmar" not in sys.argv:
+        sys.exit(
+            "Experimento descartado: sobrescribe data/processed/ y deliverables/resultados/.\n"
+            "Si de verdad quieres ejecutarlo: python src/reentrenar_cost_sensitive.py --confirmar\n"
+            "Para volver a la partición original, ejecuta los notebooks 01 y 02."
+        )
     main()
