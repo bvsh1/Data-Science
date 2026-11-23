@@ -139,7 +139,7 @@ html_template = """<!DOCTYPE html>
                         NIDS Multidominio & IoMT <span class="text-xs px-2 py-0.5 rounded bg-cyan-950 text-cyan-400 border border-cyan-800/60 font-mono">CRISP-DM</span>
                     </h1>
                 </div>
-                <p class="text-xs text-slate-400">Plataforma Analítica basada en los Hallazgos de Notebooks 01–04 | CICIoMT2024 & CIC-DDoS2019</p>
+                <p class="text-xs text-slate-400">Plataforma Analítica basada en los Hallazgos de Notebooks 01–05 | CICIoMT2024 & CIC-DDoS2019</p>
             </div>
         </div>
 
@@ -193,7 +193,7 @@ html_template = """<!DOCTYPE html>
                     <div>
                         <h2 class="text-xs sm:text-sm font-semibold text-slate-200">Demostrador en Tiempo Real Calibrado con Datos Reales de CICIoMT2024</h2>
                         <p class="text-[11px] sm:text-xs text-slate-400">
-                            Las características mostradas (<span class="font-mono text-cyan-300">Tot size, Rate, syn_flag, Variance</span>) corresponden a las variables de mayor poder predictivo identificadas en el Notebook 02 y evaluadas en los Notebooks 03 y 04.
+                            Las características mostradas (<span class="font-mono text-cyan-300">Tot size, Rate, syn_flag, Variance</span>) corresponden a las variables de mayor poder predictivo identificadas en el Notebook 02 y evaluadas en los Notebooks 03, 04 y 05.
                         </p>
                     </div>
                 </div>
@@ -208,6 +208,7 @@ html_template = """<!DOCTYPE html>
                             <option value="cross_trad_iomt">3. Despliegue Cruzado (Tradicional → IoMT)</option>
                             <option value="cross_ablated">4. Homologación Corregida (Ablación +34B)</option>
                             <option value="decision_tree">5. Árbol de Decisión Base (Profundidad = 4)</option>
+                            <option value="mlp_neural_net">6. Red Neuronal MLP (Notebook 05 - Perceptrón Multicapa)</option>
                         </select>
                     </div>
                 </div>
@@ -563,7 +564,7 @@ html_template = """<!DOCTYPE html>
 
                         <div id="soc-log-container" class="bg-slate-950 border border-slate-800/80 rounded-lg p-3 font-mono text-[11px] log-scroll h-52 overflow-y-auto space-y-1.5 shadow-inner">
                             <div class="text-slate-500">[SISTEMA SOC] Pipeline inicializado. Modelo activo: LightGBM (Ensambles Etapa III).</div>
-                            <div class="text-slate-500">[SISTEMA SOC] Reglas de homologación y umbrales de decisión cargados desde los Notebooks 01–04.</div>
+                            <div class="text-slate-500">[SISTEMA SOC] Reglas de homologación, modelos de árboles y Red Neuronal MLP cargados desde los Notebooks 01–05.</div>
                         </div>
                     </div>
 
@@ -573,7 +574,7 @@ html_template = """<!DOCTYPE html>
         </div>
 
         <!-- =================================================================== -->
-        <!-- PESTAÑA 2: BENCHMARKS & MODELOS (NOTEBOOKS 03 Y 04) -->
+        <!-- PESTAÑA 2: BENCHMARKS & MODELOS (NOTEBOOKS 03, 04 Y 05) -->
         <!-- =================================================================== -->
         <div id="view-benchmarks" class="hidden space-y-6">
 
@@ -582,18 +583,21 @@ html_template = """<!DOCTYPE html>
                     <div>
                         <h2 class="text-base font-bold text-white flex items-center gap-2">
                             <i data-lucide="bar-chart-3" class="w-5 h-5 text-emerald-400"></i>
-                            Comparativa Experimental de Rendimiento en Prueba Oficial
+                            Comparativa Experimental de Rendimiento (Árboles vs Red Neuronal MLP)
                         </h2>
                         <p class="text-xs text-slate-400">Métricas oficiales calculadas sobre 415.658 registros no vistos del conjunto oficial de prueba (Test) de CICIoMT2024.</p>
                     </div>
 
                     <!-- Selector de Tarea -->
-                    <div class="flex items-center gap-2">
+                    <div class="flex flex-wrap items-center gap-2">
                         <button onclick="renderBenchmarkView('binaria')" id="btn-bench-binaria" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-600 text-white transition shadow">
                             Clasificación Binaria (DDoS vs Benigno)
                         </button>
                         <button onclick="renderBenchmarkView('multiclase')" id="btn-bench-multi" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 text-slate-300 hover:bg-slate-700 transition">
                             Clasificación Multiclase (SYN, UDP, Benigno)
+                        </button>
+                        <button onclick="renderBenchmarkView('mlp')" id="btn-bench-mlp" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 text-slate-300 hover:bg-slate-700 transition">
+                            Árboles vs Red Neuronal MLP (Notebook 05)
                         </button>
                     </div>
                 </div>
@@ -603,7 +607,7 @@ html_template = """<!DOCTYPE html>
                     <div class="lg:col-span-8 bg-slate-950/60 p-4 rounded-xl border border-slate-800/80">
                         <h3 class="text-xs font-bold text-slate-300 uppercase mb-3 flex items-center justify-between">
                             <span>F1-Score Macro por Algoritmo (Prueba Oficial)</span>
-                            <span class="text-[10px] text-slate-400 font-mono">Notebook 04 · Sección 3</span>
+                            <span id="benchmark-chart-subtitle" class="text-[10px] text-slate-400 font-mono">Notebook 04 · Sección 3</span>
                         </h3>
                         <div class="h-64 relative">
                             <canvas id="benchmarkChart"></canvas>
@@ -1042,7 +1046,7 @@ html_template = """<!DOCTYPE html>
                             <i data-lucide="layers" class="w-5 h-5 text-pink-400"></i>
                             Galería de Evidencias y Figuras de los Notebooks
                         </h2>
-                        <p class="text-xs text-slate-400">Visualice directamente las 16 figuras oficiales exportadas durante las etapas CRISP-DM del proyecto.</p>
+                        <p class="text-xs text-slate-400">Visualice directamente las 18 figuras oficiales exportadas durante las etapas CRISP-DM y Redes Neuronales del proyecto.</p>
                     </div>
 
                     <!-- Filtros por Etapa -->
@@ -1052,6 +1056,7 @@ html_template = """<!DOCTYPE html>
                         <button onclick="filterGallery('02_fe')" class="gallery-filter-btn px-2.5 py-1 rounded-md text-xs bg-slate-800 text-slate-300 hover:bg-slate-700">02 Preprocesamiento</button>
                         <button onclick="filterGallery('03_base')" class="gallery-filter-btn px-2.5 py-1 rounded-md text-xs bg-slate-800 text-slate-300 hover:bg-slate-700">03 Línea Base</button>
                         <button onclick="filterGallery('04_final')" class="gallery-filter-btn px-2.5 py-1 rounded-md text-xs bg-slate-800 text-slate-300 hover:bg-slate-700">04 Modelos Finales</button>
+                        <button onclick="filterGallery('05_mlp')" class="gallery-filter-btn px-2.5 py-1 rounded-md text-xs bg-slate-800 text-slate-300 hover:bg-slate-700">05 Red Neuronal (MLP)</button>
                     </div>
                 </div>
 
@@ -1084,7 +1089,7 @@ html_template = """<!DOCTYPE html>
     <!-- Footer -->
     <footer class="bg-slate-900 border-t border-slate-800 px-6 py-4 text-center text-xs text-slate-500 mt-12">
         <p>Sistema Inteligente de Detección de Intrusiones en Redes (NIDS) | Proyecto de Ciencia de Datos</p>
-        <p class="mt-1 text-[11px] text-slate-600">Integración de resultados de Notebooks 01, 02, 03 y 04 · Dataset CICIoMT2024 & CIC-DDoS2019</p>
+        <p class="mt-1 text-[11px] text-slate-600">Integración de resultados de Notebooks 01, 02, 03, 04 y 05 · Dataset CICIoMT2024 & CIC-DDoS2019</p>
     </footer>
 
     <!-- =================================================================== -->
@@ -1540,6 +1545,37 @@ html_template = """<!DOCTYPE html>
                 }
             }
 
+            // Escenario 6: Red Neuronal MLP (Notebook 05)
+            if (scenario === 'mlp_neural_net') {
+                if (features.realClass === 'DDOS_SYN') {
+                    return {
+                        predLabel: 'DDoS SYN Flood (MLP)',
+                        isAttack: true,
+                        attackType: 'SYN',
+                        color: '#f59e0b',
+                        confidence: 99.7,
+                        ruleUsed: 'Perceptrón Multicapa (128x64 ReLU): Red con regularización L2 (alpha=0.001) y normalización StandardScaler. Recall SYN: 99.70%.'
+                    };
+                } else if (features.realClass === 'DDOS_UDP') {
+                    return {
+                        predLabel: 'DDoS UDP Flood (MLP)',
+                        isAttack: true,
+                        attackType: 'UDP',
+                        color: '#ef4444',
+                        confidence: 99.9,
+                        ruleUsed: 'Perceptrón Multicapa (128x64 ReLU): Activación continua sobre vector de entrada normalizado. Recall UDP: 99.94%.'
+                    };
+                } else {
+                    return {
+                        predLabel: 'Benigno (MLP)',
+                        isAttack: false,
+                        color: '#10b981',
+                        confidence: 99.99,
+                        ruleUsed: 'Perceptrón Multicapa (128x64 ReLU): Superficie continua con 0.008% falsas alarmas (Recall Benigno: 99.992%).'
+                    };
+                }
+            }
+
             return { predLabel: 'Benigno', isAttack: false, color: '#10b981', confidence: 99.0, ruleUsed: 'Fallback' };
         }
 
@@ -1757,16 +1793,27 @@ html_template = """<!DOCTYPE html>
             currentBenchView = view;
             const btnBin = document.getElementById('btn-bench-binaria');
             const btnMulti = document.getElementById('btn-bench-multi');
+            const btnMlp = document.getElementById('btn-bench-mlp');
 
-            if (view === 'binaria') {
-                btnBin.className = 'px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-600 text-white transition shadow';
-                btnMulti.className = 'px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 text-slate-300 hover:bg-slate-700 transition';
+            const inactiveClass = 'px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 text-slate-300 hover:bg-slate-700 transition';
+            const activeClass = 'px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-600 text-white transition shadow';
+
+            if (btnBin) btnBin.className = view === 'binaria' ? activeClass : inactiveClass;
+            if (btnMulti) btnMulti.className = view === 'multiclase' ? activeClass : inactiveClass;
+            if (btnMlp) btnMlp.className = view === 'mlp' ? activeClass : inactiveClass;
+
+            const sub = document.getElementById('benchmark-chart-subtitle');
+            let dataKey = 'comparacion_binaria_prueba_oficial';
+            if (view === 'multiclase') {
+                dataKey = 'comparacion_multiclase_prueba_oficial';
+                if (sub) sub.innerText = 'Notebook 04 · Sección 3 (Multiclase)';
+            } else if (view === 'mlp') {
+                dataKey = 'comparacion_general_arboles_vs_mlp';
+                if (sub) sub.innerText = 'Notebook 05 · Sección 5 (Red Neuronal MLP vs Modelos de Árboles)';
             } else {
-                btnMulti.className = 'px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-600 text-white transition shadow';
-                btnBin.className = 'px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 text-slate-300 hover:bg-slate-700 transition';
+                if (sub) sub.innerText = 'Notebook 04 · Sección 3 (Binaria)';
             }
 
-            const dataKey = view === 'binaria' ? 'comparacion_binaria_prueba_oficial' : 'comparacion_multiclase_prueba_oficial';
             const rows = NOTEBOOK_DATA[dataKey] || [];
 
             // Renderizar encabezados
@@ -1795,13 +1842,13 @@ html_template = """<!DOCTYPE html>
                         td.innerText = v;
                     } else {
                         const num = parseFloat(v);
-                        if (!isNaN(num) && v.includes('.')) {
+                        if (!isNaN(num) && String(v).includes('.')) {
                             td.innerText = num.toFixed(4);
                             if (k.includes('F1') || k.includes('Accuracy')) {
                                 td.className += num > 0.99 ? ' text-emerald-400 font-bold' : (num < 0.6 ? ' text-red-400' : ' text-slate-200');
                             }
                         } else {
-                            td.innerText = v;
+                            td.innerText = v !== null && v !== undefined ? v : '-';
                         }
                     }
                     tr.appendChild(td);
@@ -1821,6 +1868,11 @@ html_template = """<!DOCTYPE html>
             const ctx = document.getElementById('benchmarkChart').getContext('2d');
             const labels = rows.map(r => r.Modelo);
             const f1Values = rows.map(r => parseFloat(r['F1 macro']) || 0);
+            const bgColors = rows.map(r => {
+                if (r.Modelo === 'Red Neuronal (MLP)') return '#a855f7';
+                const v = parseFloat(r['F1 macro']) || 0;
+                return v > 0.995 ? '#10b981' : (v < 0.6 ? '#ef4444' : '#0ea5e9');
+            });
 
             if (benchmarkChartInstance) {
                 benchmarkChartInstance.destroy();
@@ -1834,7 +1886,7 @@ html_template = """<!DOCTYPE html>
                         {
                             label: 'F1 Macro (Prueba Oficial)',
                             data: f1Values,
-                            backgroundColor: f1Values.map(v => v > 0.995 ? '#10b981' : (v < 0.6 ? '#ef4444' : '#0ea5e9')),
+                            backgroundColor: bgColors,
                             borderRadius: 6,
                             borderWidth: 0
                         }
@@ -2150,6 +2202,20 @@ html_template = """<!DOCTYPE html>
                 title: 'Cambio de Distribución entre IoMT y Red Tradicional',
                 path: '../deliverables/figuras/04_fig08.png',
                 caption: 'Estadística KS de variables comunes entre CICIoMT2024 y CIC-DDoS2019, evidenciando las enormes diferencias en tasas y longitudes por extractor.'
+            },
+            {
+                id: '05_fig01',
+                stage: '05_mlp',
+                title: 'Matriz de Confusión — Red Neuronal (MLP)',
+                path: '../deliverables/figuras/05_fig01.png',
+                caption: 'Matriz de confusión multiclase en los 415.658 flujos de prueba oficial: el MLP alcanza 99.99% de Recall en Benigno (solo 3 falsas alarmas), 99.70% en SYN y 99.94% en UDP.'
+            },
+            {
+                id: '05_fig02',
+                stage: '05_mlp',
+                title: 'Comparativa General: Red Neuronal vs Modelos de Árboles',
+                path: '../deliverables/figuras/05_fig02.png',
+                caption: 'Comparativa de F1 Macro en prueba oficial: el Perceptrón Multicapa (0.9966) supera a la Regresión Logística y al Árbol de Decisión, compitiendo de cerca con Random Forest (0.9968) y Boosting (0.9974).'
             }
         ];
 
